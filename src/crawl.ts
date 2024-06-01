@@ -353,6 +353,7 @@ export async function crawl({
           });
 
           const sortedArrayOfObjects = _.map(rows, (obj) => _.fromPairs(_.sortBy(Object.entries(obj), 0)));
+          console.log({ test: sortedArrayOfObjects });
 
           if (INSERT_MODE === "MONGO") {
             await appendToMongo(MONGO_URI, MONGO_DBNAME, sortedArrayOfObjects);
