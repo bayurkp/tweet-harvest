@@ -24,6 +24,7 @@
     "dotenv": "^16.4.1",
     "lodash": "^4.17.21",
     "minimist": "^1.2.8",
+    "mongodb": "^6.7.0",
     "papaparse": "^5.4.1",
     "playwright-extra": "^4.3.6",
     "prompts": "^2.4.2",

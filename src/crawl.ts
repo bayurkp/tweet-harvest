@@ -20,6 +20,7 @@ import { CACHE_KEYS, cache } from "./cache";
 import { logError, scrollDown, scrollUp } from "./helpers/page.helper";
 import Papa from "papaparse";
 import _ from "lodash";
+import { MongoClient, ServerApiVersion } from "mongodb";
 
 chromium.use(stealth());
 
@@ -42,6 +43,27 @@ function appendCsv(pathStr: string, jsonData: Record<string, any>[]) {
   return fileName;
 }
 
+async function appendToMongo(uri: string, dbName: string, jsonData: Record<string, any>[]) {
+  const client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+  });
+
+  try {
+    await client.connect();
+
+    const collection = client.db(dbName).collection("tweets");
+    await collection.insertMany(jsonData);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    await client.close();
+  }
+}
+
 type StartCrawlTwitterParams = {
   twitterSearchUrl?: string;
 };
@@ -58,7 +80,9 @@ export type CrawlParams = {
   OUTPUT_FILENAME?: string;
   TWEET_THREAD_URL?: string;
   SEARCH_TAB?: "LATEST" | "TOP";
-  CSV_INSERT_MODE?: "REPLACE" | "APPEND";
+  INSERT_MODE?: "REPLACE" | "APPEND" | "MONGO";
+  MONGO_URI?: string;
+  MONGO_DBNAME?: string;
 };
 
 export async function crawl({
@@ -74,7 +98,9 @@ export async function crawl({
   DEBUG_MODE,
   OUTPUT_FILENAME,
   SEARCH_TAB = "LATEST",
-  CSV_INSERT_MODE = "REPLACE",
+  INSERT_MODE = "REPLACE",
+  MONGO_URI,
+  MONGO_DBNAME,
 }: CrawlParams) {
   const CRAWL_MODE = TWEET_THREAD_URL ? "DETAIL" : "SEARCH";
   const SWITCHED_SEARCH_TAB = SEARCH_TAB === "TOP" ? "LATEST" : "TOP";
@@ -93,7 +119,7 @@ export async function crawl({
 
   console.info(chalk.blue("\nOpening twitter search page...\n"));
 
-  if (CSV_INSERT_MODE === "REPLACE" && fs.existsSync(FILE_NAME)) {
+  if (INSERT_MODE === "REPLACE" && fs.existsSync(FILE_NAME)) {
     console.info(
       chalk.blue(`\nFound existing file ${FILE_NAME}, renaming to ${FILE_NAME.replace(".csv", ".old.csv")}`)
     );
@@ -328,9 +354,15 @@ export async function crawl({
 
           const sortedArrayOfObjects = _.map(rows, (obj) => _.fromPairs(_.sortBy(Object.entries(obj), 0)));
 
-          const fullPathFilename = appendCsv(FILE_NAME, sortedArrayOfObjects);
+          if (INSERT_MODE === "MONGO") {
+            await appendToMongo(MONGO_URI, MONGO_DBNAME, sortedArrayOfObjects);
 
-          console.info(chalk.blue(`\n\nYour tweets saved to: ${fullPathFilename}`));
+            console.info(chalk.blue(`\n\nYour tweets saved to ${MONGO_DBNAME} Database on MongoDB`));
+          } else {
+            const fullPathFilename = appendCsv(FILE_NAME, sortedArrayOfObjects);
+
+            console.info(chalk.blue(`\n\nYour tweets saved to: ${fullPathFilename}`));
+          }
 
           // progress:
           console.info(chalk.yellow(`Total tweets saved: ${allData.tweets.length}`));

@@ -21,6 +21,11 @@ program
   .addOption(new Option("-l, --limit <number>", "Limit number of tweets to crawl").argParser(parseInt))
   .addOption(new Option("-d, --delay <number>", "Delay between each tweet (in seconds)").default(3).argParser(parseInt))
   .addOption(new Option("-o, --output-filename <type>", "Output filename"))
+  .addOption(
+    new Option("-im --insert-mode <type>", "Insert Mode").choices(["REPLACE", "APPEND", "MONGO"]).default("MONGO")
+  )
+  .addOption(new Option("-mu --mongo-uri <type>", "MongoDB connection URI"))
+  .addOption(new Option("-mn --mongo-dbname <type>", "MongoDB database name"))
   .addOption(new Option("--tab <type>", "Search tab").choices(["TOP", "LATEST"]).default("TOP"));
 
 function showWelcomeMessage() {
@@ -101,6 +106,9 @@ async function main() {
       DELAY_EACH_TWEET_SECONDS: options.delay,
       OUTPUT_FILENAME: options.outputFilename,
       SEARCH_TAB: options.tab.toUpperCase(),
+      INSERT_MODE: options.insertMode,
+      MONGO_URI: options.mongoUri,
+      MONGO_DBNAME: options.mongoDbname,
     });
   } catch (err) {
     console.error("Error running script:", err);
